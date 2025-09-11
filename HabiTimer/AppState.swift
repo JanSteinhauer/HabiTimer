@@ -38,28 +38,34 @@ final class AppState: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             self?.tick()
         }
-        // Schedule “finish” notification for the current remaining time
+
         NotificationManager.cancelTaskFinish()
         NotificationManager.scheduleTaskFinish(after: head.remainingSeconds, taskName: head.name)
+
+        Haptics.impact(.light) // subtle tap when starting
     }
 
     func pause() {
         isRunning = false
         timer?.invalidate(); timer = nil
-        // cancel because the finish time changed
         NotificationManager.cancelTaskFinish()
+
+        Haptics.impact(.rigid) // slightly different tap when pausing
     }
 
     func stopAndCompleteCurrent() {
         guard let current = tasks.first else { return }
-        completed.append(CompletedEntry(name: current.name, priority: current.priority,
-                                        plannedSeconds: current.plannedSeconds, finishedAt: .now))
+        let entry = CompletedEntry(name: current.name, priority: current.priority,
+                                   plannedSeconds: current.plannedSeconds, finishedAt: .now)
+        completed.append(entry)
         tasks.removeFirst()
         pause()
         NotificationManager.cancelTaskFinish()
+
+        Haptics.success() // success haptic when completing
     }
 
-    // If you let users reorder while running, keep this so the finish alert follows the new top task:
+
     private func rescheduleFinishIfNeeded() {
         guard isRunning, let head = tasks.first else {
             NotificationManager.cancelTaskFinish()
