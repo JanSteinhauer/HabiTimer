@@ -15,7 +15,7 @@ struct HabiTimerApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView().tint(.habitOrange)
         }
     }
 }

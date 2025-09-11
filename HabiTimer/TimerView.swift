@@ -30,9 +30,11 @@ struct TimerView: View {
                         .stroke(.gray.opacity(0.2), lineWidth: 24)
                     Circle()
                         .trim(from: 0, to: progress)
-                        .stroke(AngularGradient(colors: [.blue, .purple], center: .center), style: StrokeStyle(lineWidth: 24, lineCap: .round))
+                        .stroke(Color.habitOrange,
+                                style: StrokeStyle(lineWidth: 24, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                         .animation(.smooth(duration: 0.2), value: progress)
+
                     VStack(spacing: 8) {
                         Text(formatTime(t.remainingSeconds))
                             .font(.system(size: 44, weight: .heavy, design: .rounded))

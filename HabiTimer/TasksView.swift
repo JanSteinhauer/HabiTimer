@@ -30,11 +30,17 @@ struct TasksView: View {
                 Button {
                     showAdd = true
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 56))
-                        .symbolRenderingMode(.hierarchical)
-                        .padding(20)
-                        .shadow(radius: 6)
+                    ZStack {
+                        Circle()
+                            .fill(Color(.systemGray5))
+                            .frame(width: 56, height: 56)
+
+                        Image(systemName: "plus")
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundColor(.habitOrange)
+                    }
+                    .padding(20)
+                    .shadow(radius: 6)
                 }
                 .accessibilityLabel("Add Task")
             }
