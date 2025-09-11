@@ -11,7 +11,7 @@ import Combine
 
 @MainActor
 final class AppState: ObservableObject {
-    @Published var tasks: [HabitTask] = [] { didSet { persist() } }
+    @Published var tasks: [HabitTask] = [] { didSet { persist(); rescheduleFinishIfNeeded() } }
     @Published var completed: [CompletedEntry] = [] { didSet { persist() } }
 
     // Timer state
@@ -32,29 +32,44 @@ final class AppState: ObservableObject {
     func moveTask(from: IndexSet, to: Int) { tasks.move(fromOffsets: from, toOffset: to) }
 
     func start() {
-        guard tasks.first != nil else { return }
-        guard !isRunning else { return }
+        guard let head = tasks.first, !isRunning else { return }
         isRunning = true
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             self?.tick()
         }
+        // Schedule “finish” notification for the current remaining time
+        NotificationManager.cancelTaskFinish()
+        NotificationManager.scheduleTaskFinish(after: head.remainingSeconds, taskName: head.name)
     }
 
     func pause() {
         isRunning = false
         timer?.invalidate(); timer = nil
-        // Remaining is already reflected live in tasks[0]
+        // cancel because the finish time changed
+        NotificationManager.cancelTaskFinish()
     }
 
     func stopAndCompleteCurrent() {
         guard let current = tasks.first else { return }
-        // Consider it finished, archive original planned time
-        let entry = CompletedEntry(name: current.name, priority: current.priority, plannedSeconds: current.plannedSeconds, finishedAt: .now)
-        completed.append(entry)
+        completed.append(CompletedEntry(name: current.name, priority: current.priority,
+                                        plannedSeconds: current.plannedSeconds, finishedAt: .now))
         tasks.removeFirst()
         pause()
+        NotificationManager.cancelTaskFinish()
     }
+
+    // If you let users reorder while running, keep this so the finish alert follows the new top task:
+    private func rescheduleFinishIfNeeded() {
+        guard isRunning, let head = tasks.first else {
+            NotificationManager.cancelTaskFinish()
+            return
+        }
+        NotificationManager.cancelTaskFinish()
+        NotificationManager.scheduleTaskFinish(after: head.remainingSeconds, taskName: head.name)
+    }
+
+
 
     private func tick() {
         guard !tasks.isEmpty else { pause(); return }

@@ -9,6 +9,10 @@ import SwiftUI
 
 @main
 struct HabiTimerApp: App {
+    init() {
+           NotificationManager.requestAuthorization()
+       }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
