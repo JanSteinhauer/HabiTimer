@@ -9,11 +9,12 @@ import SwiftUI
 
 struct TimerView: View {
     @EnvironmentObject var app: AppState
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var editMode: EditMode = .inactive
 
     var current: HabitTask? { app.tasks.first }
     var progress: Double {
-        guard let t = current else { return 0 }
-        guard t.plannedSeconds > 0 else { return 0 }
+        guard let t = current, t.plannedSeconds > 0 else { return 0 }
         return 1 - Double(t.remainingSeconds) / Double(t.plannedSeconds)
     }
 
@@ -25,6 +26,7 @@ struct TimerView: View {
                     .multilineTextAlignment(.center)
                     .padding(.top, 24)
 
+                // Big circular countdown
                 ZStack {
                     Circle()
                         .stroke(.gray.opacity(0.2), lineWidth: 24)
@@ -34,7 +36,6 @@ struct TimerView: View {
                                 style: StrokeStyle(lineWidth: 24, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                         .animation(.smooth(duration: 0.2), value: progress)
-
                     VStack(spacing: 8) {
                         Text(formatTime(t.remainingSeconds))
                             .font(.system(size: 44, weight: .heavy, design: .rounded))
@@ -46,6 +47,7 @@ struct TimerView: View {
                 .frame(width: 280, height: 280)
                 .padding(.vertical, 8)
 
+                // Controls
                 HStack(spacing: 16) {
                     Button(action: { app.stopAndCompleteCurrent() }) {
                         Label("Done", systemImage: "checkmark.circle.fill")
@@ -53,29 +55,49 @@ struct TimerView: View {
                     .buttonStyle(.borderedProminent)
 
                     if app.isRunning {
-                        Button(action: { app.pause() }) { Label("Pause", systemImage: "pause.fill") }
-                            .buttonStyle(.bordered)
+                        Button(action: { app.pause() }) {
+                            Label("Pause", systemImage: "pause.fill")
+                        }
+                        .buttonStyle(.bordered)
                     } else {
-                        Button(action: { app.start() }) { Label("Start", systemImage: "play.fill") }
-                            .buttonStyle(.bordered)
+                        Button(action: { app.start() }) {
+                            Label("Start", systemImage: "play.fill")
+                        }
+                        .buttonStyle(.bordered)
                     }
                 }
                 .font(.headline)
                 .padding(.top, 8)
 
-                Text("Top task controls the timer. Reorder on the Tasks tab.")
-                    .font(.footnote).foregroundStyle(.secondary)
-                    .padding(.top, 4)
+
+                
+                List {
+                    ForEach(app.tasks) { task in
+                        TaskRow(task: task)
+                            .contentShape(Rectangle())
+                    }
+                    .onMove(perform: app.moveTask)
+                   
+                }
+                .listStyle(.insetGrouped)
+                .environment(\.editMode, $editMode)
+                .frame(maxHeight: 260)
+
             } else {
-                ContentUnavailableView("No active task", systemImage: "timer", description: Text("Add a task on the Tasks tab."))
+                ContentUnavailableView("No active task",
+                                       systemImage: "timer",
+                                       description: Text("Add a task on the Tasks tab."))
                     .padding()
             }
-            Spacer()
+
+            Spacer(minLength: 0)
         }
-        .padding()
+        .padding(.bottom)
     }
 }
 
 #Preview {
     TimerView()
+        .environmentObject(AppState())
 }
+
