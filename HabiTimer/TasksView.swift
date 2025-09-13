@@ -10,6 +10,7 @@ import SwiftUI
 struct TasksView: View {
     @EnvironmentObject var app: AppState
     @State private var showAdd = false
+    @State private var editingTask: HabitTask?
 
     var body: some View {
         NavigationStack {
@@ -19,6 +20,19 @@ struct TasksView: View {
                 } else {
                     ForEach(app.tasks) { task in
                         TaskRow(task: task)
+                            .swipeActions(edge: .trailing) {
+                                Button("Edit") {
+                                    editingTask = task
+                                }
+                                .tint(.habitOrange)
+                                Button(role: .destructive) { // optional keep/delete
+                                    if let idx = app.tasks.firstIndex(of: task) {
+                                        app.tasks.remove(at: idx)
+                                    }
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                     }
                     .onDelete(perform: app.deleteTask)
                     .onMove(perform: app.moveTask)
@@ -27,31 +41,33 @@ struct TasksView: View {
             .navigationTitle("Habits")
             .toolbar { EditButton() }
             .overlay(alignment: .bottomLeading) {
-                Button {
-                    showAdd = true
-                } label: {
+                // your custom gray circle + orange plus button from earlier
+                Button { showAdd = true } label: {
                     ZStack {
-                        Circle()
-                            .fill(Color(.systemGray5))
-                            .frame(width: 56, height: 56)
-
-                        Image(systemName: "plus")
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(.habitOrange)
+                        Circle().fill(Color.gray.opacity(0.2)).frame(width: 56, height: 56)
+                        Image(systemName: "plus").font(.system(size: 28, weight: .bold)).foregroundColor(.habitOrange)
                     }
-                    .padding(20)
-                    .shadow(radius: 6)
+                    .padding(20).shadow(radius: 6)
                 }
                 .accessibilityLabel("Add Task")
             }
             .sheet(isPresented: $showAdd) {
-                AddTaskSheet()
-                    .presentationDetents([.fraction(0.4), .medium])
-                    .environmentObject(app)
+                AddTaskSheet().environmentObject(app)
+            }
+            .sheet(item: $editingTask) { t in
+                EditEntrySheet(
+                    title: "Edit Task",
+                    initialName: t.name,
+                    initialPriority: t.priority,
+                    initialMinutes: max(1, t.plannedSeconds / 60)
+                ) { name, priority, minutes in
+                    app.updateTask(id: t.id, name: name, priority: priority, minutes: minutes)
+                }
             }
         }
     }
 }
+
 
 struct TaskRow: View {
     let task: HabitTask

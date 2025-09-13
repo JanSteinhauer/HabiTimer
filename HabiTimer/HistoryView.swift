@@ -9,16 +9,13 @@ import SwiftUI
 
 struct HistoryView: View {
     @EnvironmentObject var app: AppState
+    @State private var editingCompleted: CompletedEntry?
 
     private var grouped: [(key: Date, value: [CompletedEntry])] {
-        let calendar = Calendar.current
-        let groups = Dictionary(grouping: app.completed) { entry in
-            calendar.startOfDay(for: entry.finishedAt)
-        }
-        // Sort days desc, then sort entries per day desc by finishedAt
+        let cal = Calendar.current
+        let groups = Dictionary(grouping: app.completed) { cal.startOfDay(for: $0.finishedAt) }
         return groups.keys.sorted(by: >).map { day in
-            let items = (groups[day] ?? []).sorted { $0.finishedAt > $1.finishedAt }
-            return (day, items)
+            (day, (groups[day] ?? []).sorted { $0.finishedAt > $1.finishedAt })
         }
     }
 
@@ -26,32 +23,41 @@ struct HistoryView: View {
         NavigationStack {
             List {
                 ForEach(grouped, id: \.key) { group in
-                    let day = group.key
-                    let items = group.value
-                    Section(header: Text(day, style: .date)) {
-                        ForEach(items) { item in
+                    Section(header: Text(group.key, style: .date)) {
+                        ForEach(group.value) { item in
                             HStack(spacing: 12) {
                                 Circle().fill(item.priority.color).frame(width: 8, height: 8)
                                 VStack(alignment: .leading) {
                                     Text(item.name).font(.headline)
-                                    Text(item.priority.rawValue)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                    Text(item.priority.rawValue).font(.caption).foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Text(formatTime(item.plannedSeconds))
-                                    .monospaced()
-                                    .font(.subheadline)
+                                Text(formatTime(item.plannedSeconds)).monospaced().font(.subheadline)
                             }
                             .padding(.vertical, 4)
+                            .swipeActions(edge: .trailing) {
+                                Button("Edit") { editingCompleted = item }
+                                    .tint(.habitOrange)
+                            }
                         }
                     }
                 }
             }
             .navigationTitle("Completed")
+            .sheet(item: $editingCompleted) { c in
+                EditEntrySheet(
+                    title: "Edit Completed",
+                    initialName: c.name,
+                    initialPriority: c.priority,
+                    initialMinutes: max(1, c.plannedSeconds / 60)
+                ) { name, priority, minutes in
+                    app.updateCompleted(id: c.id, name: name, priority: priority, minutes: minutes)
+                }
+            }
         }
     }
 }
+
 
 #Preview {
     HistoryView()

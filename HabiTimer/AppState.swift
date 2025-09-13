@@ -113,7 +113,27 @@ final class AppState: ObservableObject {
         backgroundAnchor = Date()
     }
     
-    // Call when scene becomes active again
+    func updateTask(id: UUID, name: String, priority: Priority, minutes: Int) {
+        guard let idx = tasks.firstIndex(where: { $0.id == id }) else { return }
+        var t = tasks[idx]
+        t.name = name.trimmed()
+        t.priority = priority
+        let newPlanned = max(60, minutes * 60)
+        // Keep remaining within new planned; if you prefer to reset remaining to planned, set = newPlanned
+        t.plannedSeconds = newPlanned
+        t.remainingSeconds = min(t.remainingSeconds, newPlanned)
+        tasks[idx] = t
+    }
+
+    func updateCompleted(id: UUID, name: String, priority: Priority, minutes: Int) {
+        guard let idx = completed.firstIndex(where: { $0.id == id }) else { return }
+        var c = completed[idx]
+        c.name = name.trimmed()
+        c.priority = priority
+        c.plannedSeconds = max(60, minutes * 60)
+        completed[idx] = c
+    }
+    
     func didBecomeActive() {
         guard isRunning, var head = tasks.first, let bg = backgroundAnchor else { return }
         let elapsed = Int(Date().timeIntervalSince(bg))
