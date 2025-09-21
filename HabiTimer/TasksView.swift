@@ -6,88 +6,88 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct TasksView: View {
-    @EnvironmentObject var app: AppState
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: [SortDescriptor(\HabitTask.orderIndex, order: .forward)]) private var tasks: [HabitTask]
     @State private var showAdd = false
     @State private var editingTask: HabitTask?
+    let timerState: TimerState
 
     var body: some View {
         NavigationStack {
             List {
-                if app.tasks.isEmpty {
+                if tasks.isEmpty {
                     ContentUnavailableView("No tasks yet", systemImage: "plus", description: Text("Tap the + to add your first habit."))
                 } else {
-                    ForEach(app.tasks) { task in
-                        TaskRow(task: task)
-                            .swipeActions(edge: .trailing) {
-                                Button("Edit") {
-                                    editingTask = task
-                                }
-                                .tint(.habitOrange)
-                                Button(role: .destructive) { // optional keep/delete
-                                    if let idx = app.tasks.firstIndex(of: task) {
-                                        app.tasks.remove(at: idx)
-                                    }
+                    ForEach(tasks) { task in
+                        TaskRow(name: task.name,
+                                    priority: task.priority,
+                                    remainingSeconds: task.remainingSeconds,
+                                    plannedSeconds: task.plannedSeconds)
+                            .swipeActions {
+                                Button("Edit") { editingTask = task }.tint(.habitOrange)
+                                Button(role: .destructive) {
+                                    modelContext.delete(task)
+                                    try? modelContext.save()
+                                    timerState.rescheduleIfRunning(for: tasks.first)
                                 } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
                             }
                     }
-                    .onDelete(perform: app.deleteTask)
-                    .onMove(perform: app.moveTask)
+                    .onMove(perform: move)
                 }
             }
             .navigationTitle("Habits")
             .toolbar { EditButton() }
             .overlay(alignment: .bottomLeading) {
-                // your custom gray circle + orange plus button from earlier
                 Button { showAdd = true } label: {
                     ZStack {
                         Circle().fill(Color.gray.opacity(0.2)).frame(width: 56, height: 56)
                         Image(systemName: "plus").font(.system(size: 28, weight: .bold)).foregroundColor(.habitOrange)
-                    }
-                    .padding(20).shadow(radius: 6)
+                    }.padding(20).shadow(radius: 6)
                 }
-                .accessibilityLabel("Add Task")
             }
-            .sheet(isPresented: $showAdd) {
-                AddTaskSheet().environmentObject(app)
-            }
+            .sheet(isPresented: $showAdd) { AddTaskSheet() }
             .sheet(item: $editingTask) { t in
-                EditEntrySheet(
-                    title: "Edit Task",
-                    initialName: t.name,
-                    initialPriority: t.priority,
-                    initialMinutes: max(1, t.plannedSeconds / 60)
-                ) { name, priority, minutes in
-                    app.updateTask(id: t.id, name: name, priority: priority, minutes: minutes)
+                EditEntrySheet(title: "Edit Task",
+                               initialName: t.name,
+                               initialPriority: t.priority,
+                               initialMinutes: max(1, t.plannedSeconds/60)) { name, priority, minutes in
+                    t.name = name.trimmed()
+                    t.priority = priority
+                    t.plannedSeconds = max(60, minutes*60)
+                    t.remainingSeconds = min(t.remainingSeconds, t.plannedSeconds)
+                    try? modelContext.save()
+                    timerState.rescheduleIfRunning(for: tasks.first)
                 }
             }
         }
     }
-}
 
-
-struct TaskRow: View {
-    let task: HabitTask
-    var body: some View {
-        HStack(spacing: 12) {
-            Circle().fill(task.priority.color).frame(width: 10, height: 10)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(task.name).font(.headline)
-                Text(task.priority.rawValue)
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            VStack(alignment: .trailing) {
-                Text(formatTime(task.remainingSeconds))
-                    .monospaced().font(.title3)
-                Text("/" + formatTime(task.plannedSeconds))
-                    .font(.caption2).foregroundStyle(.secondary)
-            }
-        }
-        .padding(.vertical, 6)
+    private func move(from: IndexSet, to: Int) {
+        var array = tasks
+        array.move(fromOffsets: from, toOffset: to)
+        // Reassign orderIndex linearly
+        for (i, item) in array.enumerated() { item.orderIndex = Double(i) }
+        try? modelContext.save()
+        timerState.rescheduleIfRunning(for: tasks.first)
     }
 }
 
+private extension HabitTask {
+    // lightweight value to reuse existing TaskRow without SwiftData dependency
+    var asValue: HabitTaskValue {
+        .init(id: id, name: name, priority: priority, plannedSeconds: plannedSeconds, remainingSeconds: remainingSeconds)
+    }
+}
+
+struct HabitTaskValue: Identifiable, Equatable {
+    var id: UUID
+    var name: String
+    var priority: Priority
+    var plannedSeconds: Int
+    var remainingSeconds: Int
+}

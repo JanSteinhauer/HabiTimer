@@ -6,35 +6,34 @@
 //
 
 import SwiftUI
-
+import SwiftData
 
 struct ContentView: View {
-    @StateObject private var app = AppState()
+    @Environment(\.modelContext) private var modelContext
+    @StateObject private var timerState = TimerState()
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         TabView {
-            TasksView().environmentObject(app)
+            TasksView(timerState: timerState)
                 .tabItem { Label("Tasks", systemImage: "checklist") }
 
-            TimerView().environmentObject(app)
+            TimerView(timerState: timerState)
                 .tabItem { Label("Timer", systemImage: "timer") }
 
-            HistoryView().environmentObject(app)
+            HistoryView()
                 .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
-            case .background:
-                app.didEnterBackground()
-            case .active:
-                app.didBecomeActive()
-            default:
-                break
+            case .background: timerState.didEnterBackground()
+            case .active:     timerState.didBecomeActive(modelContext: modelContext)
+            default: break
             }
         }
     }
 }
+
 
 #Preview {
     ContentView()

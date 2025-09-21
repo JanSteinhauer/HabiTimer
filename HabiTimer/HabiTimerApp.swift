@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct HabiTimerApp: App {
@@ -17,5 +18,6 @@ struct HabiTimerApp: App {
         WindowGroup {
             ContentView().tint(.habitOrange)
         }
+        .modelContainer(for: [HabitTask.self, CompletedEntry.self])
     }
 }

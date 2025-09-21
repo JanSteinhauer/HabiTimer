@@ -45,18 +45,18 @@ Built with **SwiftUI**, no external dependencies.
 
 * **Language**: Swift 5.9+
 * **UI Framework**: SwiftUI
-* **Persistence**: UserDefaults + Codable
-* **Architecture**: MVVM-like with `AppState` as ObservableObject
+* **Persistence**: [SwiftData](https://developer.apple.com/xcode/swiftdata/) (`@Model`, `@Query`, `ModelContext`)
+* **Architecture**: MVVM-like with `TimerState` as an `ObservableObject` for countdown, notifications & haptics
 
 ---
 
 ## 🧩 Next Steps / Ideas
 
-* 🔔 Local notifications when a task finishes or a reminder to start
-* 📊 Streaks & stats (weekly totals, completion trends)
-* 🌈 Customizable priority colors / themes
-* 📱 iCloud sync with SwiftData or Core Data
-* 💥 Haptics when starting/pausing/completing a task
+* 🔔 **Notifications**: Already implemented when a task finishes; optional daily/start reminders could be added
+* 📊 **Streaks & stats**: Show weekly totals, streaks, and completion trends
+* 🌈 **Themes**: Customizable priority colors or full app color themes
+* ☁️ **iCloud sync**: Turn on CloudKit support in SwiftData for seamless cross-device sync
+* 💥 **Haptics**: Already implemented for start/pause/complete; could expand to subtle “tick” haptics or streak milestones
 
 ---
 
